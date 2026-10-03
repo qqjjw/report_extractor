@@ -1,0 +1,8 @@
+node_modules/
+docs_cache/
+.pdf_cache/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example

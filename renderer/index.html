@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DART 보고서 캔버스</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- ── 상단 툴바 ─────────────────────────────────────────── -->
+  <header id="toolbar">
+    <div id="brand">
+      <span class="brand-mark">D</span>
+      <div><strong>DART Table Picker</strong><span>보고서 표 수집 작업대</span></div>
+    </div>
+
+    <div id="primary-actions">
+      <button id="btn-load" class="btn btn-primary" title="dart_reports.json 다시 읽기 (Ctrl+O)">보고서 불러오기</button>
+      <button id="btn-export" class="btn btn-success" disabled title="선택한 표를 Excel로 저장 (Ctrl+S)">Excel 내보내기</button>
+    </div>
+
+    <div id="view-actions" aria-label="캔버스 보기 조절">
+      <button id="btn-zoom-out" class="icon-btn" title="축소">−</button>
+      <button id="zoom-label" class="zoom-label" title="100%로 되돌리기">100%</button>
+      <button id="btn-zoom-in" class="icon-btn" title="확대">＋</button>
+      <button id="btn-fit" class="btn btn-subtle" title="모든 보고서를 화면에 맞춤 (F)">전체 맞춤</button>
+    </div>
+
+    <button id="btn-selection-panel" class="selection-pill" aria-expanded="true" aria-controls="selection-panel">
+      선택한 표 <strong id="selection-count">0</strong>
+    </button>
+  </header>
+
+  <!-- ── 무한 캔버스 ──────────────────────────────────────── -->
+  <div id="canvas-viewport">
+    <div id="canvas-world">
+      <!-- ReportFrame들이 여기에 동적으로 추가됨 -->
+    </div>
+  </div>
+
+  <aside id="selection-panel" aria-label="선택 현황">
+    <div class="panel-header">
+      <div><span class="eyebrow">SELECTIONS</span><h2>선택 현황</h2></div>
+      <button id="btn-panel-close" class="icon-btn" title="패널 닫기">×</button>
+    </div>
+    <div id="selection-summary" class="selection-summary">보고서를 불러오고 필요한 표를 클릭하세요.</div>
+    <div id="selection-list" class="selection-list"></div>
+    <div class="panel-footer">
+      <button id="btn-clear" class="btn btn-danger" disabled>선택 초기화</button>
+      <p>표 오른쪽 위 번호로 같은 항목끼리 묶을 수 있습니다.</p>
+    </div>
+  </aside>
+
+  <div id="empty-state">
+    <div class="empty-icon">▦</div>
+    <h1>DART 보고서를 한 화면에서 비교하세요</h1>
+    <p><code>dart_reports.json</code>의 보고서를 불러온 뒤, 필요한 표를 클릭해 Excel로 모을 수 있습니다.</p>
+    <button id="btn-empty-load" class="btn btn-primary">보고서 불러오기</button>
+    <div class="shortcut-row"><span>드래그로 이동</span><span>휠로 확대·축소</span><span>표 클릭으로 선택</span></div>
+  </div>
+
+  <div id="canvas-status" class="hidden"><span id="report-count">0개 보고서</span><span>•</span><span id="canvas-hint">빈 곳을 드래그해 이동</span></div>
+
+  <div id="toast" role="status" aria-live="polite" class="hidden"></div>
+
+  <!-- ── 로딩 오버레이 ────────────────────────────────────── -->
+  <div id="loading-overlay" class="hidden">
+    <div id="loading-box">
+      <div class="spinner"></div>
+      <p id="loading-text">보고서를 불러오는 중...</p>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>

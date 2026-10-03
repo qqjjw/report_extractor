@@ -1,0 +1,12 @@
+{
+  "name": "dart-table-picker",
+  "version": "3.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^31.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
