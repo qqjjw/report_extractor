@@ -1,0 +1,16 @@
+{
+  "name": "dart-report-collector",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1"
+  }
+}
