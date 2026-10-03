@@ -1,0 +1,7 @@
+{
+  "name": "pdf-table-picker",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": { "start": "electron ." },
+  "dependencies": { "electron": "^31.0.0", "xlsx": "^0.18.5" }
+}
