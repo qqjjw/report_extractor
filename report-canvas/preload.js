@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('canvasApp', {
+  scroll: (x,y) => ipcRenderer.send('canvas:scroll',{x,y}),
   state: () => ipcRenderer.invoke('canvas:state'),
   command: (action, id) => ipcRenderer.invoke('canvas:command', action, id),
   begin: (kind, id, x, y) => ipcRenderer.send('canvas:begin', { kind, id, x, y }),

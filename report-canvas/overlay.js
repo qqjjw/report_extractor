@@ -1,5 +1,5 @@
 const api=window.canvasApp;
-api.onGesture(kind=>{document.body.style.cursor=kind==='resize'?'nwse-resize':'grabbing';});
+api.onGesture(kind=>{document.body.style.cursor=kind==='panel'?'col-resize':kind==='resize'?'nwse-resize':'grabbing';});
 let latest, frame;
 document.addEventListener('pointermove',event=>{
   latest={x:event.screenX,y:event.screenY,end:event.buttons===0};
