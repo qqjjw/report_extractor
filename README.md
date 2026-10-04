@@ -84,3 +84,74 @@ npm test
 ```
 
 코웨이 사업보고서 10건의 파싱, 중복 제거, 삭제 후 재수집, 저장·복원, 손상 파일 보호, 연결 재시도와 User-Agent 처리를 검증합니다. 실제 DART 접속과 코웨이 사업보고서 수집도 확인했습니다.
+
+## 디렉터리와 파일 안내
+
+```text
+프로젝트 폴더/
+├─ main.js
+├─ preload.js
+├─ index.html
+├─ renderer.js
+├─ style.css
+├─ lib/
+│  ├─ capture.js
+│  ├─ connection.js
+│  ├─ reports.js
+│  ├─ store.js
+│  └─ user-agent.js
+├─ test/
+│  ├─ collector.test.js
+│  └─ connection.test.js
+├─ package.json
+├─ package-lock.json
+├─ start.cmd
+├─ README.md
+├─ .gitignore
+├─ data/          # 로컬 저장 데이터 · Git 제외
+├─ node_modules/  # 설치된 의존성 · Git 제외
+└─ work/          # 개발 중 사용한 검증 스크립트 · Git 제외
+```
+
+### 앱 실행과 화면
+
+| 파일 | 역할 |
+| --- | --- |
+| `main.js` | Electron 앱의 시작점입니다. 창과 DART 화면을 만들고 응답 수집, 목록 관리, 저장 및 화면과의 통신을 연결합니다. |
+| `preload.js` | 화면에서 사용할 수 있는 목록 조회·추출 토글·삭제·재연결 등의 통신 기능을 제공합니다. |
+| `index.html` | 앱 상단 버튼과 오른쪽 수집 목록 영역의 HTML 구조입니다. 왼쪽 DART는 별도의 웹 화면으로 표시됩니다. |
+| `renderer.js` | 수집 목록과 상태 메시지를 화면에 표시하고 버튼 클릭을 처리합니다. |
+| `style.css` | 앱 화면의 배치, 색상, 버튼과 보고서 카드의 스타일입니다. |
+| `start.cmd` | 현재 폴더에서 `npm start`를 실행하는 Windows 실행 파일입니다. |
+
+### 기능 모듈 (`lib/`)
+
+| 파일 | 역할 |
+| --- | --- |
+| `lib/capture.js` | DART 검색 요청과 응답을 감지하고, 추출 ON/OFF 상태에 따라 응답 본문을 읽습니다. |
+| `lib/connection.js` | DART 접속, 일시적인 연결 오류 재시도 및 검색 화면으로의 대체 연결을 처리합니다. |
+| `lib/reports.js` | 검색 결과 HTML에서 보고서 정보를 추출하고 접수번호 기준으로 목록을 합쳐 중복을 제거합니다. |
+| `lib/store.js` | JSON 파일 읽기, 저장 형식 확인, 순차 저장 및 임시 파일 교체를 처리합니다. 손상된 기존 파일은 보호합니다. |
+| `lib/user-agent.js` | DART 요청의 User-Agent에서 앱 이름과 Electron 제품명을 제거하고 Chromium의 플랫폼·버전 정보를 유지합니다. |
+
+### 테스트 (`test/`)
+
+| 파일 | 역할 |
+| --- | --- |
+| `test/collector.test.js` | 보고서 정보 추출, 중복 제거, 삭제 후 재수집, 저장·복원 및 응답 수집 토글 처리를 검사합니다. |
+| `test/connection.test.js` | 접속 재시도, 검색 화면 대체 연결, 오류 처리 및 User-Agent 변환을 검사합니다. |
+
+`test/`는 `npm test`를 실행할 때 사용하는 개발용 검사 코드입니다. 앱 실행에는 필요하지 않지만 기능 수정 후 기존 동작을 확인하기 위해 저장소에 포함합니다.
+
+### 설정과 로컬 폴더
+
+| 파일·폴더 | 역할 |
+| --- | --- |
+| `package.json` | 프로젝트 이름, 실행·테스트 명령과 Electron·Cheerio 의존성을 정의합니다. |
+| `package-lock.json` | 설치할 의존성 버전을 기록합니다. `npm ci`는 이 파일을 기준으로 설치합니다. |
+| `README.md` | 설치, 사용법, 문제 해결 및 프로젝트 구성 안내입니다. |
+| `.gitignore` | Git에 올리지 않을 로컬 데이터, 의존성, 검증 파일 등을 지정합니다. |
+| `data/` | 현재 수집 목록인 `reports.json`과 저장 중 임시 파일을 보관합니다. 필요할 때 자동 생성되며 다른 컴퓨터로 목록을 옮기려면 `reports.json`을 별도로 복사합니다. |
+| `node_modules/` | npm이 설치한 의존성이 들어 있습니다. 직접 수정하지 않으며 삭제했다면 `npm ci`로 다시 설치합니다. |
+| `work/` | 접속 비교와 실제 앱 실행 검증 등에 사용한 개발용 임시 스크립트입니다. 앱 실행과 `npm test`에는 필요하지 않으며 저장소를 내려받아도 포함되지 않습니다. |
+| `.git/` | Git이 커밋 이력과 원격 저장소 정보를 관리하는 숨김 폴더입니다. 앱 실행과는 관계없습니다. |
