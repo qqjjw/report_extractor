@@ -91,3 +91,53 @@ test('capture toggle, request start, cancelled generation, empty and failed resp
   api.sendCommand=async()=>({body:'access denied'});
   await request('invalid'); await response('invalid'); await finish('invalid'); assert.equal(errors.length,2);
 });
+
+// 상단 입력값을 바꾼 코드 사본으로 검증합니다. 실제 파일과 사용자 데이터는 수정하지 않습니다.
+function scenarioModule(file, replacements) {
+  const vm = require('node:vm');
+  const { createRequire } = require('node:module');
+  const filename = require.resolve(file);
+  let source = require('node:fs').readFileSync(filename, 'utf8');
+  for (const [before, after] of replacements) {
+    assert.ok(source.includes(before), `입력값 위치 확인: ${before}`);
+    source = source.replace(before, after);
+  }
+  const sandbox = { module: { exports: {} }, require: createRequire(filename), URL, Buffer };
+  vm.runInNewContext(source, sandbox, { filename });
+  return sandbox.module.exports;
+}
+test('changed table selector and column order drive both detection and parsing', () => {
+  const parser = scenarioModule('../lib/reports', [
+    ["const TABLE_SELECTOR = 'table.tbList';", "const TABLE_SELECTOR = 'table.changed';"],
+    ['company: 1, report: 2, receivedDate: 4', 'company: 4, report: 2, receivedDate: 1']
+  ]);
+  const original = html(examples.slice(0, 1));
+  const changed = original.replace('class="tbList"', 'class="changed"')
+    .replace(/(<tr><td>1<\/td>)(<td>.*?<\/td>|<td[^>]*>.*?<\/td>)(<td>.*?<\/td>)(<td>.*?<\/td>)(<td>.*?<\/td>)/s,
+      (_, start, company, report, presenter, date) => start + date + report + presenter + company);
+  assert.equal(parser.hasReportTable(original), false);
+  assert.equal(parser.hasReportTable(changed), true);
+  const parsed = parser.parseReports(changed);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].companyName, '코웨이');
+  assert.equal(parsed[0].receivedDate, '2026.03.23');
+  assert.equal(parsed[0].url, parser.buildReportUrl('20260323000924'));
+});
+test('changed response path controls capture without changing HTML parser', async () => {
+  const { Capture: ScenarioCapture } = scenarioModule('../lib/capture', [
+    ["const TARGET_PATH = '/dsab007/detailSearch.ax';", "const TARGET_PATH = '/changed/search.ax';"]
+  ]);
+  const batches = [];
+  const collector = new ScenarioCapture({sendCommand:async()=>({body:html()})}, value=>batches.push(value), error=>assert.fail(error), parseReports);
+  collector.setEnabled(true);
+  async function request(id, route) {
+    await collector.message('Network.requestWillBeSent',{requestId:id,request:{url:`https://dart.fss.or.kr${route}`}});
+    await collector.message('Network.responseReceived',{requestId:id,response:{status:200}});
+    await collector.message('Network.loadingFinished',{requestId:id});
+  }
+  await request('old','/dsab007/detailSearch.ax');
+  assert.equal(batches.length,0);
+  await request('new','/changed/search.ax');
+  assert.equal(batches.length,1);
+  assert.equal(batches[0].length,10);
+});
