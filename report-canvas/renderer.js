@@ -25,10 +25,13 @@ function renderNavigation(state) {
   for(const [id,button] of listButtons)if(!ids.has(id)){button.remove();listButtons.delete(id);}
   state.cards.forEach((card,index)=>{
     let button=listButtons.get(card.rcpNo);
-    if(!button){button=document.createElement('button');button.className='list-item';button.onclick=()=>api.command('focus',card.rcpNo).then(render);listButtons.set(card.rcpNo,button);}
+    if(!button){button=document.createElement('div');button.className='list-item';
+      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='target-check';checkbox.setAttribute('aria-label',card.companyName+' '+card.reportName+'에 적용');checkbox.onchange=()=>api.command('target-toggle',card.rcpNo).then(render);
+      const focus=document.createElement('button');focus.className='report-focus';focus.onclick=()=>api.command('focus',card.rcpNo).then(render);button.append(checkbox,focus);listButtons.set(card.rcpNo,button);}
     button.classList.toggle('selected',state.selected===card.rcpNo);button.setAttribute('aria-pressed',String(state.selected===card.rcpNo));
-    const text=[card.companyName,card.reportName,card.receivedDate+' · '+card.status];
-    if(button.dataset.text!==JSON.stringify(text)){button.replaceChildren(...text.map((value,i)=>{const node=document.createElement(i===0?'strong':'span');node.textContent=value;if(i===1)node.className='name';return node;}));button.dataset.text=JSON.stringify(text);}
+    button.querySelector('input').checked=state.targetSelection.includes(card.rcpNo);
+    const text=[card.companyName,card.reportName,card.receivedDate+' · '+card.status,card.review?[card.review.state,'기준: '+card.review.sourcePath,card.review.candidatePath?'후보: '+card.review.candidatePath:'',card.review.reason||'','시도 '+card.review.attempts+'회'].filter(Boolean).join(' · '):''];
+    if(button.dataset.text!==JSON.stringify(text)){button.querySelector('button').replaceChildren(...text.map((value,i)=>{const node=document.createElement(i===0?'strong':'span');node.textContent=value;if(i===1)node.className='name';return node;}));button.dataset.text=JSON.stringify(text);}
     if(list.children[index]!==button)list.insertBefore(button,list.children[index]||null);
   });
 }
@@ -36,6 +39,7 @@ function render(state) {
   if (!state) return;
   if (!document.getElementById('refresh')) { document.getElementById('empty').hidden = state.cards.length > 0; document.getElementById('empty').textContent = state.loading ? '보고서를 불러오는 중입니다.' : '수집된 보고서가 없습니다. 수집 앱에서 목록을 만든 뒤 새로고침하세요.'; return; }
   renderNavigation(state);
+  document.getElementById('search-summary').textContent=state.searchMessage||('적용 대상 '+state.targetSelection.length+'개');
   document.getElementById('refresh').disabled = state.loading;
   if(state.loading)cancelHold();
   document.getElementById('refresh').textContent = state.loading ? '불러오는 중…' : '1.5초 눌러 새로고침';
@@ -46,7 +50,7 @@ function render(state) {
   document.getElementById('empty').hidden = state.cards.length > 0;
   document.getElementById('empty').textContent = state.loading ? '보고서를 불러오는 중입니다.' : 'reports.json에 보고서가 없습니다. 수집 앱에서 목록을 만든 뒤 새로고침하세요.';
 }
-for(const id of ['toggle-panel','align','asc','desc','zoom-out','zoom-in','zoom-reset']) if(document.getElementById(id)) document.getElementById(id).onclick=()=>api.command(id).then(render);
+for(const id of ['target-all','target-none','toggle-panel','align','asc','desc','zoom-out','zoom-in','zoom-reset']) if(document.getElementById(id)) document.getElementById(id).onclick=()=>api.command(id).then(render);
 let active = false;
 document.getElementById('background').onpointerdown = event => {
   if(event.button!==0) return;

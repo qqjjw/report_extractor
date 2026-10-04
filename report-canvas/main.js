@@ -1,4 +1,5 @@
-const { app, BrowserWindow, WebContentsView, View, ipcMain } = require('electron');
+const { app, BrowserWindow, WebContentsView, View, ipcMain, dialog } = require('electron');
+const toc = require('./lib/toc');
 const path = require('node:path');
 const { readReports, createScene, arrange, resize, applySize, zoomTo, scrollRange, scrollTo, centerOn, preserveCenter } = require('./lib/scene');
 
@@ -9,22 +10,24 @@ const TOOLBAR_HEIGHT = 96;
 const PANEL_DEFAULT = 280, PANEL_MIN = 200, PANEL_MAX = 500, CANVAS_MIN = 400;
 const SPLITTER_WIDTH = 6, SCROLLBAR_SIZE = 18;
 const CARD_HEADER = 68;
-const CARD_FOOTER = 30;
+const CARD_FOOTER = 106;
 const LOAD_CONCURRENCY = 3;
 const LOAD_TIMEOUT_MS = 45000;
 const REMOVED_PRODUCTS = /\s(?:Electron|dart-report-canvas)\/\S+/gi;
 const localPreferences = { preload: path.join(__dirname, 'preload.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false };
 let win, stage, backdrop, overlay, scene = createScene([]), entries = new Map(), trusted = new Set(), loading = false, error = '', generation = 0, gesture;
 
+let targetSelection=new Set(), searchBusy=false, searchMessage='', searchJob=0;
+let searchSession=null;
 let panelWidth=PANEL_DEFAULT, panelCollapsed=false, selected=null, viewport=null, range=null;
 // ===== 처리 로직: 네이티브 웹 화면은 캔버스 좌표에 맞춰 이동 =====
-const snapshot = () => ({ cards: scene.cards, zoom: scene.zoom, pan: scene.pan, loading, error, file: REPORTS_FILE, panelWidth, panelCollapsed, selected, viewport, range });
+const snapshot = () => ({ cards: scene.cards, zoom: scene.zoom, pan: scene.pan, loading, error, file: REPORTS_FILE, panelWidth, panelCollapsed, selected, viewport, range, hasSearch:!!searchSession, targetSelection:[...targetSelection], searchBusy, searchMessage });
 function send(contents, channel, value) { if (!contents.isDestroyed()) contents.send(channel, value); }
 function publish() {
   if (!win || win.isDestroyed()) return;
   send(win.webContents, 'canvas:state', snapshot());
   if (backdrop) send(backdrop.webContents, 'canvas:state', snapshot());
-  scene.cards.forEach(card => { const entry = entries.get(card.rcpNo); if (entry) { entry.site.setVisible(!card.error); send(entry.chrome.webContents, 'canvas:card', card); } });
+  scene.cards.forEach(card => { const entry = entries.get(card.rcpNo); if (entry) { entry.site.setVisible(!card.error); send(entry.chrome.webContents, 'canvas:card', {...card,searchBusy,hasSearch:!!searchSession}); } });
 }
 function layout(resetRange = false, rangeMode = 'content') {
   if (!win || win.isDestroyed()) return;
@@ -44,7 +47,8 @@ function layout(resetRange = false, rangeMode = 'content') {
     const w = Math.round(card.width * z), h = Math.round(card.height * z);
     entry.group.setBounds({ x, y, width: w, height: h });
     entry.chrome.setBounds({ x: 0, y: 0, width: w, height: h });
-    entry.group.setVisible(x < viewport.width && x + w > 0 && y < viewport.height && y + h > 0);
+    // 화면 밖에서도 본문 뷰포트 크기를 유지합니다. 부모 stage가 화면 영역에서 자릅니다.
+    entry.group.setVisible(true);
     entry.chrome.webContents.setZoomFactor(z);
     entry.site.setBounds({ x: 0, y: Math.round(CARD_HEADER * z), width: w, height: Math.max(1, h - Math.round((CARD_HEADER + CARD_FOOTER) * z)) });
     entry.site.webContents.setZoomFactor(z);
@@ -80,7 +84,7 @@ async function refresh() {
   let reports;
   try { reports = await readReports(REPORTS_FILE); }
   catch (failure) { loading = false; error = failure.message; publish(); return snapshot(); }
-  const epoch = ++generation; cancelGesture(); dispose(); scene = createScene(reports); selected=null; range=null;
+  const epoch = ++generation; cancelGesture(); dispose(); scene = createScene(reports); selected=null; range=null; targetSelection.clear();searchJob++;searchBusy=false;searchMessage='';searchSession=null;
   try {
     for (const card of scene.cards) {
       const chrome = new WebContentsView({ webPreferences: { ...localPreferences, partition: 'canvas-controls' } });
@@ -103,12 +107,46 @@ async function refresh() {
   finally { loading = false; publish(); }
   return snapshot();
 }
+function setReview(card,record,state,reason=''){
+ const node=record.candidates?.[record.index];card.review={state,reason,sourcePath:searchSession.source.path.join(' → '),candidatePath:node?.path.join(' → ')||'',attempts:record.attempts};
+}
+async function tryCandidate(card,record,current){
+ if(!current())return;
+ try{const entry=entries.get(card.rcpNo);if(card.status!=='열림'||!entry)throw new Error('보고서가 아직 준비되지 않았습니다.');
+ if(record.candidates===null){const data=await toc.inspect(entry.site.webContents);if(!current())return;record.candidates=toc.candidates(searchSession.source,data.nodes);}
+ if(record.index>=record.candidates.length){setReview(card,record,'후보 없음');return;}
+ record.attempts++;setReview(card,record,'이동 중');publish();
+ await toc.open(entry.site.webContents,record.candidates[record.index],()=>current()&&entries.get(card.rcpNo)===entry);if(current())setReview(card,record,'판정 대기');
+ }catch(failure){if(current())setReview(card,record,'이동 실패',failure.message);}
+}
+async function startSearch(id){
+ if(searchBusy)return snapshot();const source=scene.cards.find(c=>c.rcpNo===id),targets=scene.cards.filter(c=>c.rcpNo!==id&&targetSelection.has(c.rcpNo));
+ if(!targets.length){searchMessage='탐색할 다른 보고서를 선택하세요.';publish();return snapshot();}if(!source||source.status!=='열림'){searchMessage='기준 보고서가 아직 준비되지 않았습니다.';publish();return snapshot();}
+ searchBusy=true;publish();const epoch=generation,job=++searchJob,current=()=>epoch===generation&&job===searchJob;
+ try{if(searchSession){const answer=await dialog.showMessageBox(win,{type:'question',buttons:['취소','새 탐색 시작'],defaultId:0,cancelId:0,message:'새 탐색을 시작하면 기존 판정과 제외 기록이 초기화됩니다.'});if(!current()||answer.response!==1)return snapshot();}
+ const data=await toc.inspect(entries.get(id).site.webContents);if(!data.current||!await toc.matches(entries.get(id).site.webContents,data.current))throw new Error('현재 본문과 목차를 연결하지 못했습니다. 목차를 선택한 뒤 다시 시도하세요.');if(!current())return snapshot();
+ searchSession={sourceId:id,source:data.current,records:new Map()};scene.cards.forEach(c=>delete c.review);source.review={state:'기준 목차',sourcePath:data.current.path.join(' → '),candidatePath:'',attempts:0};searchMessage='기준: '+data.current.path.join(' → ');publish();
+ for(const card of targets){if(!current())break;const record={candidates:null,index:0,attempts:0};searchSession.records.set(card.rcpNo,record);await tryCandidate(card,record,current);if(current())publish();}
+ }catch(failure){if(current())searchMessage=failure.message;}finally{if(current()){searchBusy=false;publish();}}return snapshot();
+}
+async function judgeCandidate(action,id){
+ if(searchBusy||!searchSession)return snapshot();const record=searchSession.records.get(id),card=scene.cards.find(c=>c.rcpNo===id);if(!record||!card||['합격','후보 없음'].includes(card.review?.state))return snapshot();
+ const epoch=generation,job=++searchJob,current=()=>epoch===generation&&job===searchJob;searchBusy=true;publish();
+ try{if(action==='candidate-retry'){await tryCandidate(card,record,current);return snapshot();}if(card.review?.state!=='판정 대기')return snapshot();
+ const entry=entries.get(id),node=record.candidates[record.index];if(!entry||!await toc.matches(entry.site.webContents,node)){if(current())setReview(card,record,'이동 실패','현재 목차가 후보와 다릅니다. 현재 후보 다시 열기를 누르세요.');return snapshot();}if(!current())return snapshot();
+ if(action==='candidate-accept')setReview(card,record,'합격');else{record.index++;await tryCandidate(card,record,current);}
+ }catch(failure){if(current())setReview(card,record,'이동 실패',failure.message);}finally{if(current()){searchBusy=false;publish();}}return snapshot();
+}
 function authorized(event) { return trusted.has(event.sender.id); }
 ipcMain.handle('canvas:state', event => authorized(event) ? snapshot() : null);
 ipcMain.handle('canvas:command', async (event, action, id) => {
   if (!authorized(event)) return;
   const card = scene.cards.find(value => value.rcpNo === id);
   if (action === 'refresh') return refresh();
+  if (action === 'search-toc') {await startSearch(id);return snapshot();}
+  if (['candidate-accept','candidate-reject','candidate-retry'].includes(action)) {await judgeCandidate(action,id);return snapshot();}
+  if (action === 'target-toggle' && card) {targetSelection.has(id)?targetSelection.delete(id):targetSelection.add(id);publish();return snapshot();}
+  if (action === 'target-all' || action === 'target-none') {targetSelection=action==='target-all'?new Set(scene.cards.map(c=>c.rcpNo)):new Set();publish();return snapshot();}
   if (action === 'align' || action === 'asc' || action === 'desc') arrange(scene, action);
   else if (action === 'zoom-in') zoomTo(scene, scene.zoom + 0.1);
   else if (action === 'zoom-out') zoomTo(scene, scene.zoom - 0.1);
@@ -158,7 +196,7 @@ app.whenReady().then(async () => {
   await overlay.webContents.loadFile(path.join(__dirname, 'overlay.html'));
   await win.loadFile(path.join(__dirname, 'index.html'));
   layout(); win.on('resize', ()=>{layout(false,'view');publish();}); win.on('blur', cancelGesture);
-  win.on('closed', () => { generation++; dispose(); if (!overlay.webContents.isDestroyed()) overlay.webContents.close(); if (!backdrop.webContents.isDestroyed()) backdrop.webContents.close(); });
+  win.on('closed', () => { generation++;searchJob++; dispose(); if (!overlay.webContents.isDestroyed()) overlay.webContents.close(); if (!backdrop.webContents.isDestroyed()) backdrop.webContents.close(); });
   await refresh();
 });
 app.on('window-all-closed', () => app.quit());
