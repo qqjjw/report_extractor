@@ -1,5 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const {normalize,candidates,open}=require('../lib/toc');
+const {test}=require('node:test');const assert=require('node:assert/strict');const {normalize,open}=require('../lib/toc');
 const node=(id,title,parent='II. 사업의 내용')=>({id,title,path:[parent,title]});
 test('normalize numbering and punctuation without semantic rewriting',()=>{assert.equal(normalize(' II. 사업의 내용 '),'사업의 내용');assert.equal(normalize('2. 사업의 개요'),'사업의 개요');assert.equal(normalize('사업의 개요'),'사업의 개요');});
-test('exact then substring then shared words; parent tie-break and stable order',()=>{const source=node('s','1. 사업의 개요');const nodes=[node('a','사업의 전망'),node('b','주요 사업의 개요'),node('c','2. 사업의 개요','다른 항목'),node('d','3. 사업의 개요'),node('e','4. 사업의 개요'),node('f','재무제표')];assert.deepEqual(candidates(source,nodes).map(n=>n.id),['d','e','c','b','a']);assert.deepEqual(candidates(node('s','현황'),[node('x','무관')]),[]);});
 test('cancelled navigation never selects a target',async()=>{let calls=0;await assert.rejects(open({mainFrame:{executeJavaScript:()=>calls++}},node('a','a'),()=>false),/취소/);assert.equal(calls,0);});

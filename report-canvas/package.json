@@ -3,6 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "main": "main.js",
-  "scripts": { "start": "electron .", "test": "node --test" },
-  "devDependencies": { "electron": "44.5.1" }
+  "scripts": {
+    "start": "electron .",
+    "cli": "node cli.js",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "44.5.1"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "overrides": {
+    "exceljs": { "uuid": "11.1.1" }
+  }
 }

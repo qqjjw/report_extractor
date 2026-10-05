@@ -3,12 +3,7 @@ const TREE_SELECTOR='#listTree', FRAME_SELECTOR='#ifrm';
 const BODY_HOST='dart.fss.or.kr', BODY_PATH='/report/viewer.do';
 const WAIT_MS=10000, POLL_MS=150, EXECUTE_TIMEOUT_MS=5000;
 const DOC_KEYS=['rcpNo','dcmNo','eleId','offset','length','dtd'];
-function normalize(title){return title.replace(/^\s*(?:[IVXLCDM]+|\d+|[가-힣])\s*[.．、)\]]\s*/i,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim().toLowerCase();}
-function candidates(source,nodes){
- const title=normalize(source.title),words=new Set(title.split(' ').filter(w=>w.length>=2));if(!title)return [];
- return nodes.map((node,order)=>{const other=normalize(node.title),rank=other===title?0:other&&(other.includes(title)||title.includes(other))?1:other.split(' ').some(w=>w.length>=2&&words.has(w))?2:3;
- const ancestors=source.path.slice(0,-1).map(normalize),score=node.path.slice(0,-1).map(normalize).filter(p=>ancestors.includes(p)).length;return {node,rank,score,order};}).filter(c=>c.rank<3).sort((a,b)=>a.rank-b.rank||b.score-a.score||a.order-b.order).map(c=>c.node);
-}
+function normalize(title){return title.replace(/^\s*(?:[IVXLCDM]+|\d+(?:-\d+)*|[가-힣])\s*[.．、)\]]\s*/i,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim().toLowerCase();}
 // 목차 데이터만 읽습니다. 전체 본문을 분석하지 않습니다.
 function inspectPage(selector,iframeSelector,keys){
  const tree=window.$j?.(selector).jstree(true),iframe=document.querySelector(iframeSelector);
@@ -35,4 +30,4 @@ async function open(contents,node,isCurrent=()=>true){
  await execute(contents.mainFrame,'('+clickPage.toString()+')('+JSON.stringify(TREE_SELECTOR)+','+JSON.stringify(node)+','+JSON.stringify(DOC_KEYS)+')');
  const until=Date.now()+WAIT_MS;while(Date.now()<until){if(!isCurrent())throw new Error('탐색이 변경되어 취소했습니다.');if(await matches(contents,node))return;await new Promise(r=>setTimeout(r,POLL_MS));}throw new Error('후보 본문이 열리지 않았습니다. 같은 후보를 다시 열 수 있습니다.');
 }
-module.exports={normalize,candidates,inspect,matches,open};
+module.exports={normalize,inspect,matches,open,execute};
