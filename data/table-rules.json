@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "include": [],
+  "exclude": [],
+  "synonyms": { "사업의개요": "사업개요", "현금흐름표": "현금흐름" },
+  "ignoreTokens": ["단위", "원", "천원", "백만원", "당기", "전기", "제", "기"],
+  "minimumRuleScore": 0.25,
+  "aiThreshold": 0.6
+}

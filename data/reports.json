@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "reports": [
+    {
+      "rcpNo": "20260323000924",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260323000924",
+      "reportName": "사업보고서 (2025.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2026.03.23"
+    },
+    {
+      "rcpNo": "20250321001734",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250321001734",
+      "reportName": "사업보고서 (2024.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2025.03.21"
+    },
+    {
+      "rcpNo": "20240329002735",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240329002735",
+      "reportName": "[기재정정]사업보고서 (2023.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2024.03.29"
+    },
+    {
+      "rcpNo": "20230321000862",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20230321000862",
+      "reportName": "사업보고서 (2022.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2023.03.21"
+    },
+    {
+      "rcpNo": "20220816001433",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20220816001433",
+      "reportName": "[기재정정]사업보고서 (2021.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2022.08.16"
+    },
+    {
+      "rcpNo": "20210323000600",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20210323000600",
+      "reportName": "사업보고서 (2020.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2021.03.23"
+    },
+    {
+      "rcpNo": "20200330002548",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20200330002548",
+      "reportName": "사업보고서 (2019.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2020.03.30"
+    },
+    {
+      "rcpNo": "20190814001347",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190814001347",
+      "reportName": "[기재정정]사업보고서 (2018.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2019.08.14"
+    },
+    {
+      "rcpNo": "20180402004139",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20180402004139",
+      "reportName": "사업보고서 (2017.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2018.04.02"
+    },
+    {
+      "rcpNo": "20170331004238",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20170331004238",
+      "reportName": "사업보고서 (2016.12)",
+      "companyName": "코웨이",
+      "receivedDate": "2017.03.31"
+    }
+  ]
+}

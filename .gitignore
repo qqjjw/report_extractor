@@ -1,0 +1,11 @@
+node_modules/
+.runtime/
+artifacts/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.log
+!data/
+!data/*.json

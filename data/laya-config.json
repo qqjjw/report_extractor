@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "pythonPath": "",
+  "modelPath": "",
+  "device": "",
+  "startupTimeoutMs": 300000,
+  "requestTimeoutMs": 120000
+}

@@ -1,0 +1,17 @@
+{
+  "name": "report-canvas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DART report comparison canvas",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "electron": "^42.0.0"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
