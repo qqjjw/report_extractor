@@ -48,12 +48,12 @@ async function showCandidate(c,candidate,run=tableRun) {
 async function searchOne(c,input,run) {
   const requestId=`${run}:${c.rcpNo}`;tableRequests.set(requestId,c);c.tableUI.busy(true);c.tableUI.status('선택 목차의 본문에서 표를 찾는 중…');
   try {
-    const response=await window.reportsAPI.searchTables({requestId,guestId:c.site.getWebContentsId(),source:tableSource,toc:c.tocSession.toc,input});
+    const response=await window.reportsAPI.searchTables({requestId,guestId:c.site.getWebContentsId(),source:tableSource,toc:c.tocSession.toc,input,mode:input.mode||'rule'});
     if(run!==tableRun || !cards.includes(c))return;
-    const result=response.ok?response.result:{report:c.tocSession.toc.report,status:'error',candidates:[],errors:[{error:response.error}]};
+    const result=response.ok?response.result:{mode:input.mode||'rule',report:c.tocSession.toc.report,status:'error',candidates:[],errors:[{error:response.error}]};
     tableResults.set(c.rcpNo,result);c.tableUI.result(result);
     if(result.candidates.length)await showCandidate(c,result.candidates[0],run);
-  } catch(e){if(run===tableRun){const result={status:'error',candidates:[],errors:[{error:e.message}]};tableResults.set(c.rcpNo,result);c.tableUI.result(result);}}
+  } catch(e){if(run===tableRun){const result={mode:input.mode||'rule',status:'error',candidates:[],errors:[{error:e.message}]};tableResults.set(c.rcpNo,result);c.tableUI.result(result);}}
   finally {tableRequests.delete(requestId);if(run===tableRun)c.tableUI.busy(false);}
 }
 async function searchTables(input,onlyReportId) {

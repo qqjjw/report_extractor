@@ -14,7 +14,7 @@ const guestPreload = path.join(runtimePath,'guest-preload.js');
 require('node:fs').writeFileSync(guestPreload,require('./guest-bundle').guestBundle(appRoot));
 let win;
 let reports = new Map(); const guests = new Map(), pendingShows = new Map(), pendingSearches=new Map();
-async function liveLoad(url,payload,rules,bodySection,signal,bodySectionPath){
+async function liveLoad(url,payload,rules,bodySection,signal,bodySectionPath,choiceRequest){
   const guest=guestFor(payload.guestId,payload.toc.report.rcpNo);
   const id=`live-${Date.now()}-${Math.random()}`;
   return new Promise((resolve,reject)=>{
@@ -23,7 +23,7 @@ async function liveLoad(url,payload,rules,bodySection,signal,bodySectionPath){
     const timer=setTimeout(()=>finish(reject,new Error('보고서 본문 로딩·탐색 시간 초과')),40000);
     pendingSearches.set(id,{guestId:guest.id,resolve:value=>finish(resolve,value),reject:error=>finish(reject,error)});
     signal.addEventListener('abort',abort,{once:true});if(signal.aborted){abort();return;}
-    const send=()=>{if(!pendingSearches.has(id)||guest.isDestroyed())return;guest.send('table:search-live',{requestId:id,documentUrl:url,source:payload.source,input:payload.input,rules,bodySection,bodySectionPath});};
+    const send=()=>{if(!pendingSearches.has(id)||guest.isDestroyed())return;guest.send('table:search-live',{requestId:id,documentUrl:url,source:payload.source,input:payload.input,rules,bodySection,bodySectionPath,choiceRequest});};
     const frame=guest.mainFrame.framesInSubtree.find(frame=>Rules.sameDocument(frame.url,url));
     if(frame)send();
     else guest.mainFrame.executeJavaScript(ViewerNavigation.script(url)).then(moved=>{if(moved)send();else pendingSearches.get(id)?.reject(new Error('본문 프레임을 찾지 못했습니다.'));}).catch(error=>pendingSearches.get(id)?.reject(error));

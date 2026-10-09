@@ -3,7 +3,7 @@ const Titles=require('./table-live');
 const {bounded}=require('../shared/async-task');
 class SearchCancelled extends Error {constructor(){super('검색 취소됨');this.name='AbortError';}}
 class TableSearch {
-  constructor(load,judge,rules){this.load=load;this.judge=judge;this.rules=rules;}
+  constructor(load,_unused,rules){this.load=load;this.rules=rules;}
   async report(source,toc,input,signal,progress=()=>{}){
     const active=()=>{if(signal.aborted)throw new SearchCancelled();};active();
     const sourcePath=(source.tocPath?.length?source.tocPath:[source.context,source.title]).filter(Boolean);
@@ -58,24 +58,7 @@ class TableSearch {
         else{ruleRejected++;if(rule.missing.length)diagnostics.missingKeywords++;if(rule.excluded.length)diagnostics.excludedKeywords++;if(rule.scopeConflict)diagnostics.scopeConflict++;if(rule.score<this.rules.minimumRuleScore)diagnostics.lowSimilarity++;}
       }
       ruleCandidates=passed.length;
-      if(passed.length && this.rules.aiEnabled===false){
-        for(const candidate of passed)candidates.push({...candidate,ai:null,status:'rule_matched',id:`${toc.report.rcpNo}:${section.order}:${candidate.table.tableIndex}:${candidate.table.fingerprint}`});
-      }else if(passed.length){
-        update(`Laya 규칙 후보 ${passed.length}개 일괄 판정`);
-        let answers;
-        try{
-          answers=await bounded(()=>this.judge(passed.map(c=>({source,candidate:c.table})),signal),120000,signal,'Laya 준비·판정 시간 초과');
-          if(!Array.isArray(answers)||answers.length!==passed.length)throw new Error('Laya 후보 응답 수가 올바르지 않습니다.');
-        }catch(error){
-          if(signal.aborted && signal.reason?.name!=='TimeoutError')active();
-          answers=passed.map(()=>({error:error.message}));errors.push({path:section.path,error:error.message});
-        }
-        for(let i=0;i<passed.length;i++){
-          const candidate=passed[i],ai=answers[i],status=Rules.decision(candidate.rule,ai,this.rules.aiThreshold);
-          if(status==='rejected'){rejected++;continue;}
-          candidates.push({...candidate,ai,status,id:`${toc.report.rcpNo}:${section.order}:${candidate.table.tableIndex}:${candidate.table.fingerprint}`});
-        }
-      }
+      for(const candidate of passed)candidates.push({...candidate,ai:null,status:'rule_matched',id:`${toc.report.rcpNo}:${section.order}:${candidate.table.tableIndex}:${candidate.table.fingerprint}`});
       scanned=1;
       if(signal.aborted){if(signal.reason?.name==='TimeoutError')timedOut=true;else active();}
     }catch(error){

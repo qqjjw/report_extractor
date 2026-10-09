@@ -19,6 +19,7 @@
     const records=[],stack=[];
     for(const el of doc.querySelectorAll('h1,h2,h3,h4,h5,h6,p,td,div,span')){
       if(el.closest('[hidden],[aria-hidden="true"]')||el.style.display==='none')continue;
+      let hidden=false;for(let parent=el;parent;parent=parent.parentElement){if(parent.style.display==='none'||parent.style.visibility==='hidden'){hidden=true;break;}}if(hidden)continue;
       const raw=DOM.text(el.textContent);
       if(!raw||raw.length>300||el.querySelector('table,h1,h2,h3,h4,h5,h6,p,div'))continue;
       if(el.tagName==='SPAN'&&el.closest('p,h1,h2,h3,h4,h5,h6,td'))continue;
@@ -104,7 +105,7 @@
   async function search(doc,payload,signal){
     const all=[...doc.querySelectorAll('table')],wanted=payload.bodySection;
     const wantedPath=payload.bodySectionPath?.length?payload.bodySectionPath:wanted;
-    const areas=wanted?ranges(doc,wantedPath,payload.rules):[],corrections=correctionAreas(doc);
+    const areas=payload.choiceArea?[payload.choiceArea]:wanted?ranges(doc,wantedPath,payload.rules):[],corrections=correctionAreas(doc);
     if(wanted&&!areas.length)throw new Error(`본문에서 '${wanted}' 구간 제목을 찾지 못했습니다.`);
     const include=[...(payload.rules.include||[]),...(payload.input.include||[])].map(Rules.normalize);
     const exclude=[...(payload.rules.exclude||[]),...(payload.input.exclude||[])].map(Rules.normalize);
@@ -113,7 +114,7 @@
       if(signal?.aborted)throw new Error('검색 취소됨');
       const table=all[i];
       if(inCorrection(table,corrections)){diagnostics.correctionTables++;continue;}
-      if(wanted&&!areas.some(area=>before(area.start,table)&&(!area.end||before(table,area.end))))continue;
+      if((wanted||payload.choiceArea)&&!areas.some(area=>before(area.start,table)&&(!area.end||before(table,area.end))))continue;
       inSection++;
       const value=Rules.normalize(table.textContent);
       if(!include.every(k=>value.includes(k)))diagnostics.missingKeywords++;
@@ -127,5 +128,25 @@
     if(!inSection&&diagnostics.correctionTables&&!wanted)throw new Error('정정 내역만 확인되어 실제 본문 검색 구간을 구분하지 못했습니다.');
     return {tables,extracted:inSection,scope:wanted||null,scopePath:areas[0]?.path||[],scopeMatch:areas[0]?{type:areas[0].matchType,similarity:areas[0].similarity}:null,diagnostics};
   }
-  const api={search,ranges,sectionFor,sectionInfo,titleParts,clean,isCorrectionTitle};if(typeof module!=='undefined')module.exports=api;else root.TableLive=api;
+  async function choiceInspect(doc,payload,signal){
+    if(signal?.aborted)throw new Error('검색 취소됨');
+    const corrections=correctionAreas(doc),records=headingRecords(doc),roots=[],stack=[],areas=new Map();
+    for(let i=0;i<records.length;i++){
+      const record=records[i];
+      if(inCorrection(record.el,corrections)||isCorrectionTitle(record.title))continue;
+      while(stack.length&&stack.at(-1).level>=record.level)stack.pop();
+      const id=`heading:${i}:${DOM.fingerprint(record.raw)}`;
+      const node={id,title:record.title,path:[...stack.map(item=>item.title),record.title],children:[]};
+      (stack.at(-1)?.node.children||roots).push(node);
+      const end=records.slice(i+1).find(next=>next.level<=record.level&&next.el!==record.el);
+      areas.set(id,{start:record.el,end:end?.el||null,path:node.path});
+      stack.push({...record,node});
+    }
+    if(payload.choiceRequest.action==='headings')return {headings:roots,tables:[]};
+    if(payload.choiceRequest.action!=='tables')throw new Error('지원하지 않는 본문 탐색입니다.');
+    const id=payload.choiceRequest.parentId,area=id?areas.get(id):null;
+    if(id&&!area)throw new Error('선택한 본문 제목이 변경되었습니다. 새 검색을 시작하세요.');
+    return search(doc,{...payload,bodySection:null,bodySectionPath:[],choiceArea:area},signal);
+  }
+  const api={search,choiceInspect,ranges,sectionFor,sectionInfo,titleParts,clean,isCorrectionTitle};if(typeof module!=='undefined')module.exports=api;else root.TableLive=api;
 })(globalThis);

@@ -80,7 +80,7 @@ ipcRenderer.on('table:search-live',async(_event,payload)=>{
     }
     if(controller.signal.aborted)return;
     if(!target)throw new Error('보고서 본문이 열리지 않았습니다. 해당 목차의 로딩 상태를 확인하세요.');
-    const result=await globalThis.TableLive.search(target,payload,controller.signal);
+    const result=await (payload.choiceRequest?globalThis.TableLive.choiceInspect:globalThis.TableLive.search)(target,payload,controller.signal);
     if(!controller.signal.aborted)ipcRenderer.send('table:live-result',{requestId:payload.requestId,ok:true,result});
   }catch(error){if(!controller.signal.aborted)ipcRenderer.send('table:live-result',{requestId:payload.requestId,ok:false,error:error.message});}
   finally{liveJobs.delete(payload.requestId);}

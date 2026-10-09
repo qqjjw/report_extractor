@@ -3,9 +3,9 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const readline = require('node:readline');
 const {bounded}=require('../shared/async-task');
-function validateAnswers(values, count) {
-  if (!Array.isArray(values) || values.length !== count || values.some(v=>!v || ['sameProbability','scopeConflictProbability'].some(k=>!Number.isFinite(v[k]) || v[k]<0 || v[k]>1) || !['current','previous','mixed','unknown'].includes(v.period) || typeof v.truncated !== 'boolean')) throw new Error('Laya 응답 형식이 올바르지 않습니다.');
-  return values;
+function validateChoice(value,candidates) {
+  if(!value||value.truncated||!candidates.some(c=>c.id===value.selectedId)||!value.probabilities||candidates.some(c=>!Number.isFinite(value.probabilities[c.id])||value.probabilities[c.id]<0||value.probabilities[c.id]>1))throw new Error('Laya 선택 응답이 올바르지 않거나 입력이 잘렸습니다.');
+  return value;
 }
 class LayaBridge {
   constructor(directory, status = ()=>{}) { this.directory=directory; this.status=status; this.child=null; this.pending=new Map(); this.sequence=0; this.queue=Promise.resolve(); this.ready=false; }
@@ -65,27 +65,23 @@ class LayaBridge {
   prepare(signal) {
     if(this.failure && Date.now()<this.failure.until)return Promise.reject(new Error(this.failure.message));
     if(!this.preparing){
-      const work=this.queue.catch(()=>{}).then(()=>this.start(signal)).catch(error=>{if(!signal?.aborted)this.failure={message:error.message,until:Date.now()+60000};throw error;});
+      const work=this.queue.catch(()=>{}).then(()=>this.start());
       this.queue=work;this.preparing=work;
       work.finally(()=>{if(this.preparing===work)this.preparing=null;}).catch(()=>{});
     }
     return bounded(()=>this.preparing,this.config?.startupTimeoutMs || 300000,signal,'Laya 준비 대기 시간 초과');
   }
-  judge(pairs,signal) {
-    const waiting=new AbortController();
-    const taskSignal=AbortSignal.any([waiting.signal,...(signal?[signal]:[])]);
+  choose(request,signal) {
+    if(!Array.isArray(request.candidates)||!request.candidates.length||new Set(request.candidates.map(c=>c.id)).size!==request.candidates.length)return Promise.reject(new Error('Laya 선택 후보가 없거나 ID가 중복됩니다.'));
     const work=this.queue.catch(()=>{}).then(async()=> {
-      if(taskSignal.aborted)throw new Error('Laya 대기 취소됨');
-      if(this.failure && Date.now()<this.failure.until)throw new Error(this.failure.message);
-      try {
-        await this.start(taskSignal);
-        return validateAnswers(await this.request('judge',{pairs},this.config.requestTimeoutMs,taskSignal),pairs.length);
-      } catch(error){if(!signal?.aborted)this.failure={message:error.message,until:Date.now()+60000};throw error;}
+      if(signal?.aborted)throw new Error('Laya 대기 취소됨');
+      await this.start(signal);
+      return validateChoice(await this.request('choose',{selection:request},this.config.requestTimeoutMs,signal),request.candidates);
     });
     this.queue=work;
-    return bounded(()=>work,this.config?.requestTimeoutMs || 120000,signal,'Laya 대기·판정 시간 초과').finally(()=>waiting.abort());
+    return bounded(()=>work,(this.config?.startupTimeoutMs||300000)+(this.config?.requestTimeoutMs||120000),signal,'Laya 대기·선택 시간 초과');
   }
   fail(error) {this.ready=false;this.child=null; for(const request of [...this.pending.values()])request.reject(error);}
   stop() { const child=this.child; this.fail(new Error('Laya 작업 종료됨')); child?.kill(); }
 }
-module.exports={LayaBridge,validateAnswers};
+module.exports={LayaBridge,validateChoice};

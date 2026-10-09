@@ -3,6 +3,7 @@ const path=require('node:path');
 const {TableParser}=require('./table-parser');
 const {bounded,delay}=require('../shared/async-task');
 const {TableSearch}=require('./table-search');
+const {TableChoice}=require('./table-choice');
 const {LayaBridge}=require('../laya/laya-bridge');
 function dartUrl(value) {
   const url=new URL(value);
@@ -63,17 +64,22 @@ class TableBackend {
   }
   async search(payload) {
     const key=payload.requestId; if(typeof key!=='string')throw new Error('검색 ID가 필요합니다.');
+    const mode=payload.mode||'rule';
+    if(!['rule','laya_choice'].includes(mode))throw new Error('검색 방식이 올바르지 않습니다.');
     this.jobs.get(key)?.abort();const controller=new AbortController();this.jobs.set(key,controller);
     try {
       const rules=JSON.parse(await fs.readFile(path.join(this.directory,'data','table-rules.json'),'utf8'));
-      if(rules.version!==1 || !Number.isFinite(rules.minimumRuleScore) || rules.minimumRuleScore<0 || rules.minimumRuleScore>1 || !Number.isFinite(rules.aiThreshold) || rules.aiThreshold<.5 || rules.aiThreshold>1 || !Array.isArray(rules.include) || !Array.isArray(rules.exclude))throw new Error('table-rules.json 설정을 확인하세요.');
+      if(rules.version!==1 || !Number.isFinite(rules.minimumRuleScore) || rules.minimumRuleScore<0 || rules.minimumRuleScore>1 || !Array.isArray(rules.include) || !Array.isArray(rules.exclude))throw new Error('table-rules.json 설정을 확인하세요.');
+      rules.aiEnabled=false;
+      if(mode==='laya_choice'){
+        if(!this.options.liveLoad)throw new Error('Laya choice 검색에는 열린 보고서가 필요합니다.');
+        await this.bridge.prepare(controller.signal);
+      }
       const deadline=new AbortController();
       const timer=setTimeout(()=>{const error=new Error('보고서 검색 시간 제한에 도달했습니다. 수집한 후보만 표시합니다. 다시 검색할 수 있습니다.');error.name='TimeoutError';deadline.abort(error);},this.options.reportTimeoutMs);
       const searchSignal=AbortSignal.any([controller.signal,deadline.signal]);
-      const config=JSON.parse(await fs.readFile(path.join(this.directory,'data','laya-config.json'),'utf8'));
-      rules.aiEnabled=config.enabled===true;
-      const engine=new TableSearch((url,signal,scope,scopePath)=>this.options.liveLoad?this.options.liveLoad(url,payload,rules,scope,signal,scopePath):this.load(url,signal),async(pairs,signal)=>{await this.bridge.prepare(signal);return this.bridge.judge(pairs,signal);},rules);
-      try{return await engine.report(payload.source,payload.toc,payload.input,searchSignal,progress=>this.status({type:'progress',requestId:key,...progress}));}
+      const engine=mode==='laya_choice'?new TableChoice((url,signal,request)=>this.options.liveLoad(url,payload,rules,null,signal,[],request),(request,signal)=>this.bridge.choose(request,signal),rules):new TableSearch((url,signal,scope,scopePath)=>this.options.liveLoad?this.options.liveLoad(url,payload,rules,scope,signal,scopePath):this.load(url,signal),()=>{throw new Error('규칙 검색은 Laya를 호출하지 않습니다.');},rules);
+      try{return {...await engine.report(payload.source,payload.toc,payload.input,searchSignal,progress=>this.status({type:'progress',requestId:key,...progress})),mode};}
       finally{clearTimeout(timer);}
     } finally {if(this.jobs.get(key)===controller)this.jobs.delete(key);}
   }
