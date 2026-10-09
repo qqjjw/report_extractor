@@ -1,0 +1,141 @@
+{
+  "reportId": "20260323000924",
+  "source": "DART TOC page; not the original user session",
+  "candidates": [
+    {
+      "id": "1",
+      "description": {
+        "title": "사 업 보 고 서",
+        "path": [
+          "사 업 보 고 서"
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "description": {
+        "title": "【 대표이사 등의 확인 】",
+        "path": [
+          "【 대표이사 등의 확인 】"
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "description": {
+        "title": "I. 회사의 개요",
+        "path": [
+          "I. 회사의 개요"
+        ]
+      }
+    },
+    {
+      "id": "9",
+      "description": {
+        "title": "II. 사업의 내용",
+        "path": [
+          "II. 사업의 내용"
+        ]
+      }
+    },
+    {
+      "id": "17",
+      "description": {
+        "title": "III. 재무에 관한 사항",
+        "path": [
+          "III. 재무에 관한 사항"
+        ]
+      }
+    },
+    {
+      "id": "118",
+      "description": {
+        "title": "IV. 이사의 경영진단 및 분석의견",
+        "path": [
+          "IV. 이사의 경영진단 및 분석의견"
+        ]
+      }
+    },
+    {
+      "id": "125",
+      "description": {
+        "title": "V. 회계감사인의 감사의견 등",
+        "path": [
+          "V. 회계감사인의 감사의견 등"
+        ]
+      }
+    },
+    {
+      "id": "128",
+      "description": {
+        "title": "VI. 이사회 등 회사의 기관에 관한 사항",
+        "path": [
+          "VI. 이사회 등 회사의 기관에 관한 사항"
+        ]
+      }
+    },
+    {
+      "id": "132",
+      "description": {
+        "title": "VII. 주주에 관한 사항",
+        "path": [
+          "VII. 주주에 관한 사항"
+        ]
+      }
+    },
+    {
+      "id": "133",
+      "description": {
+        "title": "VIII. 임원 및 직원 등에 관한 사항",
+        "path": [
+          "VIII. 임원 및 직원 등에 관한 사항"
+        ]
+      }
+    },
+    {
+      "id": "136",
+      "description": {
+        "title": "IX. 계열회사 등에 관한 사항",
+        "path": [
+          "IX. 계열회사 등에 관한 사항"
+        ]
+      }
+    },
+    {
+      "id": "137",
+      "description": {
+        "title": "X. 대주주 등과의 거래내용",
+        "path": [
+          "X. 대주주 등과의 거래내용"
+        ]
+      }
+    },
+    {
+      "id": "138",
+      "description": {
+        "title": "XI. 그 밖에 투자자 보호를 위하여 필요한 사항",
+        "path": [
+          "XI. 그 밖에 투자자 보호를 위하여 필요한 사항"
+        ]
+      }
+    },
+    {
+      "id": "143",
+      "description": {
+        "title": "XII. 상세표",
+        "path": [
+          "XII. 상세표"
+        ]
+      }
+    },
+    {
+      "id": "148",
+      "description": {
+        "title": "【 전문가의 확인 】",
+        "path": [
+          "【 전문가의 확인 】"
+        ]
+      }
+    }
+  ]
+}

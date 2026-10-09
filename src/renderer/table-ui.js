@@ -34,7 +34,7 @@
       result(result){
         content.replaceChildren();status.textContent=labels[result.status]||result.status;
         line(content,`검색 방식: ${result.mode==='laya_choice'?'Laya choice':'기존 규칙'}`);
-        for(const step of result.trace||[])line(content,`${step.stage}: ${step.selectedTitle} · 후보 ${step.candidateCount}개 · 선택 확률 ${Number.isFinite(step.probability)?(step.probability*100).toFixed(1)+'%':'정보 없음'}`);
+        for(const step of result.trace||[])line(content,`${step.stage}: 기준 ${step.target} → 선택 ${step.selectedTitle} · 후보 ${step.candidateCount}개 · 선택 확률 ${Number.isFinite(step.probability)?(step.probability*100).toFixed(1)+'%':'정보 없음'}`);
         if(result.mode==='laya_choice')line(content,'선택 확률은 참고 정보입니다. 후보 중 하나를 반드시 선택하며 정답을 보장하지 않습니다.');
         if(result.selectedSection)line(content,`선택 목차: ${result.selectedSection.path.join(' > ')} · 이 구간만 1회 검색`);
         if(result.sourceTocPath?.length)line(content,`기준 목차: ${result.sourceTocPath.join(' > ')}`);
@@ -62,8 +62,8 @@
         if(result.partial)line(content,`일부 구간만 검색됨: ${result.scanned}/${result.total} · 실패 ${result.errors.length}개`);
         for(const error of result.errors||[])line(content,`${(error.path||[]).join(' > ')}: ${error.error}`);
         if(result.rejected)line(content,`Laya가 다른 유형으로 제외한 후보: ${result.rejected}개`);
-        if(result.extracted!==undefined)line(content,`추출한 표 ${result.extracted}개 · 규칙에서 제외 ${result.ruleRejected}개 · Laya에서 제외 ${result.rejected}개`);
-        if(result.diagnostics && result.ruleRejected)line(content,`규칙 제외 사유: 필수 키워드 누락 ${result.diagnostics.missingKeywords} · 제외 키워드 ${result.diagnostics.excludedKeywords} · 범위 충돌 ${result.diagnostics.scopeConflict} · 유사도 부족 ${result.diagnostics.lowSimilarity} (사유 중복 가능)`);
+        if(result.extracted!==undefined)line(content,`검사한 HTML 표 ${result.extracted}개 · 규칙·구조 검사에서 제외 ${result.ruleRejected??0}개${result.mode==='laya_choice'?'':` · Laya에서 제외 ${result.rejected??0}개`}`);
+        if(result.diagnostics && result.ruleRejected)line(content,`제외 사유: 필수 키워드 누락 ${result.diagnostics.missingKeywords??0} · 제외 키워드 ${result.diagnostics.excludedKeywords??0} · 범위 충돌 ${result.diagnostics.scopeConflict??0} · 유사도 부족 ${result.diagnostics.lowSimilarity??0} · 표 구조·숨김 검사 ${result.diagnostics.invalidTables??0} (사유 중복 가능)`);
         if(result.mode!=='laya_choice'&&(result.status==='error'||result.partial||result.status==='not_found'))content.append(button('이 보고서 재시도',callbacks.retry));
       }
     };

@@ -109,7 +109,7 @@
     if(wanted&&!areas.length)throw new Error(`본문에서 '${wanted}' 구간 제목을 찾지 못했습니다.`);
     const include=[...(payload.rules.include||[]),...(payload.input.include||[])].map(Rules.normalize);
     const exclude=[...(payload.rules.exclude||[]),...(payload.input.exclude||[])].map(Rules.normalize);
-    const tables=[],diagnostics={missingKeywords:0,excludedKeywords:0,scopeConflict:0,lowSimilarity:0,correctionTables:0};let inSection=0;
+    const tables=[],diagnostics={missingKeywords:0,excludedKeywords:0,scopeConflict:0,lowSimilarity:0,correctionTables:0,invalidTables:0};let inSection=0;
     for(let i=0;i<all.length;i++){
       if(signal?.aborted)throw new Error('검색 취소됨');
       const table=all[i];
@@ -122,6 +122,7 @@
       if(include.every(k=>value.includes(k))&&!exclude.some(k=>value.includes(k))){
         const dto=DOM.summarize(table,doc.URL,i);
         if(dto){dto.ruleResult=Rules.evaluate(payload.source,dto,payload.input,payload.rules);if(dto.ruleResult.passed)tables.push(dto);else{if(dto.ruleResult.scopeConflict)diagnostics.scopeConflict++;if(!include.length&&dto.ruleResult.score<payload.rules.minimumRuleScore)diagnostics.lowSimilarity++;}}
+        else diagnostics.invalidTables++;
       }
       if(i%40===0)await new Promise(resolve=>setTimeout(resolve,0));
     }

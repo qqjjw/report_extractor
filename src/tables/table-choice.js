@@ -11,7 +11,8 @@ class TableChoice {
     const select=async(stage,target,items)=>{
       active();if(!items.length)throw new Error(`${stage}: 선택할 후보가 없습니다.`);
       progress({stage:`Laya ${stage} 선택 · 후보 ${items.length}개`,scanned:trace.length,total:trace.length+1,candidates:0,path:section?.path});
-      const answer=await this.choose({stage,source:{target,tocPath:sourcePath,sectionPath:bodyPath,table:stage==='표'?summary(source):undefined},candidates:items.map(item=>({id:item.id,description:item.description}))},signal);
+      const reference=stage==='표'?{table:summary(source)}:{target,...(section?{parentPath:stage==='본문 제목'&&scopePath.length?scopePath:section.path}:{})};
+      const answer=await this.choose({stage,source:reference,candidates:items.map(item=>({id:item.id,description:item.description}))},signal);
       active();const selected=items.find(item=>item.id===answer.selectedId);
       if(!selected||answer.truncated)throw new Error('Laya 선택 ID가 유효하지 않거나 입력이 잘렸습니다.');
       trace.push({stage,target,candidateCount:items.length,selectedId:selected.id,selectedTitle:selected.title,probability:answer.probabilities?.[selected.id],probabilities:answer.probabilities});
@@ -47,7 +48,7 @@ class TableChoice {
       extracted=loaded.extracted||0;diagnostics=loaded.diagnostics||{};
       const options=(loaded.tables||[]).map(table=>{
         const rule=table.ruleResult||Rules.evaluate(source,table,input,this.rules);
-        return {id:`table:${table.tableIndex}:${table.fingerprint}`,title:table.title,table:{...table,reportId:toc.report.rcpNo,tocPath:section.path},rule,description:{...summary(table),tocPath:section.path,sectionPath:scopePath,bodyOrder:table.tableIndex}};
+        return {id:`table:${table.tableIndex}:${table.fingerprint}`,title:table.title,table:{...table,reportId:toc.report.rcpNo,tocPath:section.path},rule,description:{...summary(table),bodyOrder:table.tableIndex}};
       }).filter(item=>item.rule.passed);
       ruleCandidates=options.length;
       const selected=await select('표','같은 종류의 표. 목적과 구조가 동등하면 위쪽 당기 표 우선',options);
@@ -56,5 +57,10 @@ class TableChoice {
     return {mode:'laya_choice',report:toc.report,status:candidates.length?'choice_matched':'error',candidates,selectedCandidateId:candidates[0]?.id||null,errors,trace,sourceTocPath:sourcePath,sourceSectionPath:bodyPath,selectedSection:section,bodySection:scopePath.at(-1)||null,bodySectionPath:scopePath,extracted,ruleCandidates,ruleRejected:Math.max(0,extracted-ruleCandidates),diagnostics,scanned:trace.length,total:trace.length,partial:false};
   }
 }
-function summary(table){return Object.fromEntries(['title','context','tocPath','headers','rowLabels','rowCount','columnCount'].map(key=>[key,table[key]]));}
-module.exports={TableChoice};
+function summary(table){
+  const rows=(table.cells||[]).map(row=>row.map(cell=>String(cell.text||'').replace(/\s+/g,' ').trim()).filter(value=>/\p{L}/u.test(value))).filter(row=>row.length);
+  const text=rows.length?rows.map(row=>row.join(' | ')).join('\n'):[...(table.headers||[]),...(table.rowLabels||[])].filter(Boolean).join('\n');
+  const hints=[...new Set(`${table.title||''} ${table.context||''}`.match(/당기|전기|연결|별도|개별/g)||[])];
+  return {text:[hints.join(' | '),text].filter(Boolean).join('\n')};
+}
+module.exports={TableChoice,summary};
