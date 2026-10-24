@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "reports": [
+    {
+      "rcpNo": "20260310002820",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310002820",
+      "reportName": "사업보고서 (2025.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2026.03.10"
+    },
+    {
+      "rcpNo": "20250311001085",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250311001085",
+      "reportName": "사업보고서 (2024.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2025.03.11"
+    },
+    {
+      "rcpNo": "20240312000736",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240312000736",
+      "reportName": "사업보고서 (2023.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2024.03.12"
+    },
+    {
+      "rcpNo": "20230307000542",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20230307000542",
+      "reportName": "사업보고서 (2022.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2023.03.07"
+    },
+    {
+      "rcpNo": "20220308000798",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20220308000798",
+      "reportName": "사업보고서 (2021.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2022.03.08"
+    },
+    {
+      "rcpNo": "20210309000744",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20210309000744",
+      "reportName": "사업보고서 (2020.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2021.03.09"
+    },
+    {
+      "rcpNo": "20200330003851",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20200330003851",
+      "reportName": "사업보고서 (2019.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2020.03.30"
+    },
+    {
+      "rcpNo": "20190401004781",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20190401004781",
+      "reportName": "사업보고서 (2018.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2019.04.01"
+    },
+    {
+      "rcpNo": "20180402005019",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20180402005019",
+      "reportName": "사업보고서 (2017.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2018.04.02"
+    },
+    {
+      "rcpNo": "20170331004518",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20170331004518",
+      "reportName": "사업보고서 (2016.12)",
+      "companyName": "삼성전자",
+      "receivedDate": "2017.03.31"
+    }
+  ]
+}
