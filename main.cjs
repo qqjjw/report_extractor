@@ -6,12 +6,18 @@ const { randomBytes } = require('node:crypto');
 const { retrieve } = require('./core.cjs');
 const { createDartProfile } = require('./dart-profile.cjs');
 const { attachLoadTracker } = require('./load-status.cjs');
+const { createSelections } = require('./selections.cjs');
 const { createLayout, reconcile, apply, parseReports, sortReports, arrange } = require('./canvas.cjs');
 const root = __dirname, local = path.join(root, '.local');
 fs.mkdirSync(local, { recursive: true });
 app.setPath('userData', path.join(local, 'browser'));
+const primaryInstance=app.requestSingleInstanceLock();
+if(!primaryInstance)app.quit();
+app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
 const state = { reports: [], loaded: {}, loadErrors:{}, busy: false, results: {}, events: [], source: null, sourceMode:false, embedding: !!process.env.EMBEDDING_URL, layout: createLayout() };
 const views = {};
+const selections = createSelections();
+state.selections = [];
 let win, profile, server;
 const fileReports = () => parseReports(fs.readFileSync(path.join(root, 'reports.json'), 'utf8'));
 function publish() { if (win && !win.isDestroyed()) win.webContents.send('update', state); }
@@ -23,7 +29,7 @@ function log(event) {
   publish();
 }
 function snapshot() {
-  return { ...state, results: Object.fromEntries(Object.entries(state.results).map(([id, r]) => [id, { status: r.status, count: r.count, selected: r.selected, message: r.message, verification: r.verification, position:r.evidence?.position }])), events: state.events.slice(-5) };
+  return { ...state, results: Object.fromEntries(Object.entries(state.results).map(([id, r]) => [id, { status: r.status, count: r.count, selected: r.selected, message: r.message, position:r.evidence?.position }])), events: state.events.slice(-5) };
 }
 function targetId(args = {}) {
   const id = args.report !== undefined ? String(args.report) : args.target !== undefined && args.target !== 'both' ? state.reports[Number(args.target)]?.rcpNo : state.layout.active || state.reports[0]?.rcpNo;
@@ -61,6 +67,7 @@ function reloadReports() {
     if(state.source?.report===r.rcpNo)state.source=null;
   }
   state.reports = reports;
+  selections.retain(reports); state.selections = selections.list();
   reports.forEach(r => { if (!(r.rcpNo in state.loaded)) state.loaded[r.rcpNo] = false; });
   log({ action: 'JSON 다시 불러오기', count: reports.length });
   return { count: reports.length, reports };
@@ -79,12 +86,49 @@ function setSourceMode(enabled){
   publish();return {sourceMode:enabled};
 }
 async function command(action, args = {}) {
+  if(action==='app-show'){
+    if(win.isMinimized())win.restore();win.show();win.focus();
+    return {pid:process.pid,visible:win.isVisible(),focused:win.isFocused()};
+  }
   if (layoutActions.has(action)) return layoutCommand(action, args);
   if(action==='source-get')return state.source;
+  if(action==='selection-list')return selections.list();
+  if(action==='selection-read')return selections.get(args.key);
   if(action==='source-mode')return setSourceMode(args.enabled===undefined?!state.sourceMode:args.enabled===true||args.enabled==='true');
   if (state.busy) throw Error('현재 탐색 중입니다. 완료 후 다시 요청하세요.');
   state.busy = true; publish();
   try {
+    if(action==='selection-remove') {
+      selections.remove(args.key); state.selections=selections.list(); return state.selections;
+    }
+    if(action==='selection-show') {
+      const item=selections.get(args.key);
+      layoutCommand('window-focus',{report:item.report});
+      const position=await profile.focus(item.report,item.candidate);
+      return {key:item.key,position};
+    }
+    if(action==='selection-refresh') {
+      const item=selections.get(args.key);
+      layoutCommand('window-focus',{report:item.report});
+      await profile.focus(item.report,item.candidate);
+      const evidence=await profile.read(item.report,item.candidate);
+      selections.add(state.reports.find(r=>r.rcpNo===item.report),item.candidate,evidence,item.group);
+      state.selections=selections.list();
+      return {key:item.key,originalFormat:!!evidence.original,position:evidence.position};
+    }
+    if(action==='selection-add') {
+      const id=targetId(args);
+      const candidate=args.source==='true'?state.source?.report===id&&state.source.candidate:getCandidate(id,args.id);
+      if(!candidate)throw Error('이 보고서에서 기준 표를 먼저 선택하세요.');
+      if(candidate.chars>profile.maxChunkChars)throw Error('표가 읽기 예산을 초과했습니다. 더 작은 표를 선택하세요.');
+      layoutCommand('window-focus',{report:id});
+      await profile.focus(id,candidate,args.source==='true'?'source':'result');
+      const evidence=await profile.read(id,candidate);
+      const key=selections.add(state.reports.find(r=>r.rcpNo===id),candidate,evidence,args.group);
+      state.selections=selections.list();
+      log({report:id,action:'선택 목록에 추가',group:args.group,location:candidate.id});
+      return {key,count:state.selections.length,position:evidence.position};
+    }
     if(action==='source-clear'){
       if(state.source)await profile.clearSource(state.source.report);
       state.source=null;setSourceMode(false);return {cleared:true};
@@ -126,10 +170,9 @@ async function command(action, args = {}) {
       if(candidate.chars>profile.maxChunkChars)throw Error('표가 읽기 예산을 초과했습니다.');
       await profile.focus(id,candidate);
       const evidence=await profile.read(id,candidate);
-      if(args.hash&&args.hash!==evidence.hash)throw Error('표 내용이 기존 결과와 다릅니다. 다시 검색하세요.');
       state.results[id]={status:'evidence_ready',count:1,candidates:[candidate],selected:candidate.id,query:args.query||'',evidence};
-      log({report:id,action:'저장된 결과 표시',location:candidate.id,hash:evidence.hash});
-      return {report:id,selected:candidate.id,position:evidence.position,hash:evidence.hash};
+      log({report:id,action:'저장된 결과 표시',location:candidate.id});
+      return {report:id,selected:candidate.id,position:evidence.position};
     }
     if(action==='source-select'){
       const candidate=args.id?getCandidate(id,args.id):await profile.describe(id,Number(args.table));
@@ -176,23 +219,15 @@ async function command(action, args = {}) {
       const evidence = await profile.read(id, candidate);
       const result = state.results[id];
       Object.assign(result, { selected: candidate.id, evidence, status: 'evidence_ready' });
-      if (action === 'read') {
-        log({ report: id, action: 'AI 원문 읽기', location: candidate.id, hash: evidence.hash });
-        return evidence;
-      }
-      const required = [args.term || result.query, args.year, args.basis, args.unit].filter(Boolean);
-      const source = (evidence.sectionTitle + '\n' + evidence.context + '\n' + evidence.text).replace(/\s+/g, '');
-      const checks = required.map(term => ({ term, found: source.includes(String(term).replace(/\s+/g, '')) }));
-      const checked = checks.length > 0 && checks.every(c => c.found);
-      const verification = { checked, checks, note: '원문 내 조건 존재 확인. 값·열 대응 및 회계적 적합성은 원문으로 확인하세요.' };
-      Object.assign(result, { status: checked ? 'conditions_matched' : 'verification_failed', verification });
-      log({ report: id, step: 6, action: '원문 조건 검증', location: candidate.id, hash: evidence.hash, checks, checked });
-      return verification;
+      // Legacy 'verify' calls only read/show the table; no separate validation.
+      log({ report: id, action: 'AI 원문 읽기', location: candidate.id });
+      return evidence;
     }
     throw Error('지원하지 않는 동작입니다.');
   } finally { state.busy = false; publish(); }
 }
 app.whenReady().then(async () => {
+  if(!primaryInstance)return;
   win = new BrowserWindow({ width: 1600, height: 980, minWidth: 1000, minHeight: 640, title: 'DART · 로컬 탐색', backgroundColor: '#f5f3ed', webPreferences: { preload: path.join(root, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, webviewTag: true } });
   win.setMenu(null);
   profile = createDartProfile(views);

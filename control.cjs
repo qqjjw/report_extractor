@@ -17,14 +17,14 @@ async function main() {
     if (!evidence || args.full === 'true') return evidence;
     const lines = evidence.text.split('\n');
     const terms = query.split(/\s+/).filter(Boolean);
-    return { sectionTitle: evidence.sectionTitle, context: evidence.context, header: lines[0], matchingRows: terms.length ? lines.filter(line => terms.some(term => line.replace(/\s+/g, '').includes(term.replace(/\s+/g, '')))) : lines, hash: evidence.hash, url: evidence.url, position:evidence.position };
+    return { sectionTitle: evidence.sectionTitle, context: evidence.context, header: lines[0], matchingRows: terms.length ? lines.filter(line => terms.some(term => line.replace(/\s+/g, '').includes(term.replace(/\s+/g, '')))) : lines, url: evidence.url, position:evidence.position };
   };
   if (action === 'state') {
     // Keep normal agent output compact; raw table bodies stay out of state summaries.
     console.log(JSON.stringify(value, null, 2));
   } else if (action === 'search') {
     console.log(JSON.stringify(Object.fromEntries(Object.entries(value).map(([target, r]) => [target, { ...r, evidence: compactEvidence(r.evidence, args.query) }])), null, 2));
-  } else if (action === 'read'||action==='source-read') console.log(JSON.stringify(compactEvidence(value, args.query), null, 2));
+  } else if (action === 'read'||action==='source-read'||action==='verify') console.log(JSON.stringify(compactEvidence(value, args.query), null, 2));
   else console.log(JSON.stringify(value, null, 2));
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

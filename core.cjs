@@ -30,7 +30,7 @@ async function retrieve({ profile, target, query, indexQuery, k = 5, emit = () =
     candidates = candidates.map((c, i) => ({ ...c, score: scores[i] })).sort((a, b) => b.score - a.score);
     selected = candidates[0];
   } else event(5, { action: '단일 후보 · 임베딩 생략', count: 1 });
-  event(6, { action: '원문 근거 확인 대기', location: selected.id });
+  event(6, { action: '선택한 원문 표시', location: selected.id });
   await profile.focus(target, selected);
   const evidence = await profile.read(target, selected);
   return { status: 'evidence_ready', count: candidates.length, candidates, selected: selected.id, evidence };

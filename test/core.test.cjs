@@ -19,7 +19,7 @@ test('too many candidates: do not read or embed bodies', async () => {
   assert.equal((await search(profile)).status, 'refine_query');
   assert.deepEqual(calls, ['open']);
 });
-test('one candidate: skip embedding and require evidence verification', async () => {
+test('one candidate: skip embedding and show original evidence', async () => {
   const { profile } = setup(1, { embed: async () => { throw Error('must skip'); } });
   assert.equal((await search(profile)).status, 'evidence_ready');
 });

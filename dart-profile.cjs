@@ -1,5 +1,3 @@
-const { createHash } = require('node:crypto');
-
 // Runs inside the visible DART viewer frame. Scans locally, returning metadata first.
 function tableOperation(operation, args) {
   const norm = value => String(value || '').replace(/\s+/g, '').toLowerCase();
@@ -48,7 +46,25 @@ function tableOperation(operation, args) {
     return {visible:rect.bottom>0 && rect.top<innerHeight && rect.right>0 && rect.left<innerWidth,top:rect.top,left:rect.left,viewportHeight:innerHeight};
   }
   const rect=table.getBoundingClientRect();
-  return { text: textOf(table), context: contextOf(table), rows: [...table.rows].map(r => [...r.cells].map(c => ({ text: c.textContent.trim(), colSpan: c.colSpan, rowSpan: c.rowSpan }))), url: location.href, position:{visible:rect.bottom>0 && rect.top<innerHeight && rect.right>0 && rect.left<innerWidth,top:rect.top,left:rect.left,viewportHeight:innerHeight} };
+  const appearance = el => {
+    const s=getComputedStyle(el);
+    let bg=el,fill='';
+    while(bg){const color=getComputedStyle(bg).backgroundColor;if(color!=='transparent'&&color!=='rgba(0, 0, 0, 0)'){fill=color;break;}bg=bg.parentElement;}
+    return {fill,color:s.color,fontFamily:s.fontFamily,fontSize:s.fontSize,fontWeight:s.fontWeight,fontStyle:s.fontStyle,
+      textAlign:s.textAlign,verticalAlign:s.verticalAlign,
+      borders:Object.fromEntries(['top','right','bottom','left'].map(edge=>[edge,{style:s.getPropertyValue('border-'+edge+'-style'),width:s.getPropertyValue('border-'+edge+'-width'),color:s.getPropertyValue('border-'+edge+'-color')}]))};
+  };
+  const snapshot = el => ({kind:'table',html:el.outerHTML,rows:[...el.rows].map((r,ri)=>[...r.cells].map(c=>({text:c.innerText.trim(),colSpan:c.colSpan,rowSpan:c.rowSpan||el.rows.length-ri,style:appearance(c),width:c.getBoundingClientRect().width}))),rowHeights:[...el.rows].map(r=>r.getBoundingClientRect().height),width:el.getBoundingClientRect().width});
+  const original=snapshot(table),before=[];
+  let previous=table.previousElementSibling;
+  // Preserve nearby original headings and unit/date tables, without interpreting their units.
+  for(let i=0;previous&&i<6;i++,previous=previous.previousElementSibling){
+    if(previous.tagName==='TABLE'&&previous.rows.length>3)break;
+    const text=previous.innerText.trim();if(text.length>2000)break;
+    if(text)before.unshift(previous.tagName==='TABLE'?snapshot(previous):{kind:'text',text,style:appearance(previous),height:previous.getBoundingClientRect().height});
+    if(/^\d+\.\s*\S/.test(text))break;
+  }
+  return { text: textOf(table), context: contextOf(table), rows:original.rows, original:{...original,before}, url: location.href, position:{visible:rect.bottom>0 && rect.top<innerHeight && rect.right>0 && rect.left<innerWidth,top:rect.top,left:rect.left,viewportHeight:innerHeight} };
 }
 
 function createDartProfile(views, emit) {
@@ -105,7 +121,6 @@ function createDartProfile(views, emit) {
     async read(target, candidate) {
       await profile.ensure(target, candidate);
       const evidence = await operation(target, 'read', { candidate });
-      evidence.hash = createHash('sha256').update(evidence.text).digest('hex');
       evidence.sectionTitle = candidate.sectionTitle;
       return evidence;
     },
@@ -118,7 +133,7 @@ function createDartProfile(views, emit) {
   };
   if (process.env.EMBEDDING_URL) profile.embed = async (query, texts) => {
     const input = [query, ...texts];
-    const key = createHash('sha256').update(JSON.stringify([process.env.EMBEDDING_URL, process.env.EMBEDDING_MODEL, input])).digest('hex');
+    const key = JSON.stringify([process.env.EMBEDDING_URL, process.env.EMBEDDING_MODEL, input]);
     let data = vectors.get(key);
     if (!data) {
       const response = await fetch(process.env.EMBEDDING_URL, {

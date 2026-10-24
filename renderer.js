@@ -106,9 +106,19 @@ function render(next) {
   $('status').textContent = state.busy ? '탐색 중 · 선택한 원문에서 이동과 강조를 확인하세요.' : '로컬 제어 준비 · 보고서 ' + state.reports.length + '개\n임베딩: ' + (state.embedding ? '서버 설정됨' : '미설정 · 단일 후보는 바로 확인');
   if(state.loadErrors?.[layout.active])$('status').textContent=state.loadErrors[layout.active].message+'\n보고서 위의 다시 시도를 누르세요.';
   renderResults();
+  $('keepSource').disabled=state.busy||!state.source;
+  $('selections').replaceChildren(...(state.selections||[]).map(item=>{
+    const row=el('div',undefined,'result');
+    row.append(el('b',item.group+' · '+item.reportName));
+    const show=el('button','표로 이동','mini secondary');show.disabled=state.busy;
+    show.onclick=()=>act('selection-show',{key:item.key});
+    const remove=el('button','제외','mini secondary');remove.disabled=state.busy;
+    remove.onclick=()=>act('selection-remove',{key:item.key});
+    row.append(show,remove);return row;
+  }));
   $('logs').replaceChildren(...state.events.slice(-12).reverse().map(e => el('div', new Date(e.time).toLocaleTimeString('ko-KR', {timeZone:'Asia/Seoul',hour12:false}) + ' ' + (e.step ? e.step + '/7 ' : '') + e.action + (e.count === undefined ? '' : ' · ' + e.count + '개') + (e.title ? ' · ' + e.title : '') + (e.message ? ' · ' + e.message : ''), 'log')));
 }
-const labels = { refine_index:'목차를 더 구체적으로 지정하세요.', retry_query:'후보 없음 · 목차나 검색어를 바꿔 재시도하세요.', refine_query:'후보가 K를 초과했습니다. 검색어를 추가하세요.', refine_chunk:'읽기 예산 초과 · 더 작은 목차를 지정하세요.', needs_embedding:'복수 후보 · 아래 표를 선택해 원문을 확인하거나 검색어를 좁히세요.', evidence_ready:'원문 확인 대기', conditions_matched:'검색 조건 확인 완료', verification_failed:'조건 일부가 원문에 없습니다.' };
+const labels = { refine_index:'목차를 더 구체적으로 지정하세요.', retry_query:'후보 없음 · 목차나 검색어를 바꿔 재시도하세요.', refine_query:'후보가 K를 초과했습니다. 검색어를 추가하세요.', refine_chunk:'읽기 예산 초과 · 더 작은 목차를 지정하세요.', needs_embedding:'복수 후보 · 아래 표를 선택해 원문을 읽거나 검색어를 좁히세요.', evidence_ready:'선택한 원문 표' };
 function renderResults() {
   const id = layout.active, value = state.results[id]; $('results').replaceChildren();
   const report=state.reports.find(r=>r.rcpNo===id);
@@ -121,8 +131,8 @@ function renderResults() {
     const lines = evidence.text.split('\n');
     const hits = lines.filter(line => terms.some(term => line.replace(/\s+/g,'').includes(term.replace(/\s+/g,''))));
     item.append(el('div', [evidence.sectionTitle, evidence.context, ...lines.slice(0, 3), '···', ...hits].join('\n'), 'row'));
-    const check = el('button', '검색 조건 확인', 'mini'); check.disabled = state.busy;
-    check.onclick = () => act('verify', { report:id, term:terms[0] }); item.append(check);
+    const keep=el('button','이 표를 목록에 추가','mini');keep.disabled=state.busy;
+    keep.onclick=()=>act('selection-add',{report:id,id:value.selected,group:$('selectionGroup').value.trim()});item.append(keep);
   }
   for (const candidate of value.candidates || []) {
     const button = el('button', '표 ' + (candidate.tableIndex + 1) + ' · ' + candidate.rows + '행', 'mini secondary');
@@ -152,6 +162,7 @@ $('canvasRatio').onclick = () => act('canvas-zoom', {ratio:1});
 $('sortDirection').onchange=()=>act('reports-sort',{direction:$('sortDirection').value});
 $('selectSource').onclick=()=>act('source-mode',{enabled:!state.sourceMode});
 $('clearSource').onclick=()=>act('source-clear');
+$('keepSource').onclick=()=>act('selection-add',{report:state.source.report,source:'true',group:$('selectionGroup').value.trim()});
 $('showSource').onclick=()=>act('source-show');
 $('search').onsubmit = event => { event.preventDefault(); act('search', { report:layout.active, indexQuery:$('indexQuery').value.trim(), query:$('query').value.trim(), k:Number($('k').value) }); };
 function beginDrag(event, id, edge) {
